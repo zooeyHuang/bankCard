@@ -2034,6 +2034,15 @@
             ]
         }
     ];
+    function getBankNameByBankCode(bankcode){
+        for(var i = 0 , len = bankcardList.length ; i < len ; i++){
+            var bankcard = bankcardList[i];
+            if(bankcode == bankcard.bankCode){
+                return bankcard.bankName;
+            }
+        }
+        return "";
+    }
     function _getBankInfoByCardNo(cardNo,cbf){
         for(var i = 0 , len = bankcardList.length ; i < len ; i++){
             var bankcard = bankcardList[i];
@@ -2057,7 +2066,45 @@
             if(!err && info){
                 return cbf(null,info);
             }else{
-                cbf("该银行卡不存在");
+                if (typeof module !== 'undefined' && module.exports) {
+                    var https = require('https');
+                    https.get("https://ccdcapi.alipay.com/validateAndCacheCardInfo.json?_input_charset=utf-8&cardNo="+cardNo+"&cardBinCheck=true",function(res){
+                        if(res.statusCode == 200){
+                            var chunk = "";
+                            res.on('data', function(d) {
+                                chunk += d;
+                            });
+                            res.on('end',function(){
+                                try{
+                                    var bankInfo = JSON.parse(chunk);
+                                    if(bankInfo.validated){
+                                        var info = {};
+                                        info['bankName'] = getBankNameByBankCode(bankInfo.bank);
+                                        info['cardType'] = bankInfo.cardType;
+                                        info['bankCode'] = bankInfo.bank;
+                                        info['cardTypeName'] = getCardTypeName(bankInfo.cardType);
+                                        info['backName'] = info['bankName'];//向下兼容，修改字段错别字
+                                        cbf(null,info);
+                                    }else{
+                                        errMsg = cardNo+":该银行卡不存在,"+chunk;
+                                        cbf(errMsg);
+                                    }
+                                }catch(e){
+                                    errMsg = cardNo+':获取alipay接口信息出错了,返回json格式不正确';
+                                    cbf(errMsg);
+                                }
+                            })
+                        }else{
+                            errMsg = cardNo+':获取alipay接口信息出错了,statusCode,'+res.statusCode;
+                            cbf(errMsg);
+                        }
+                    }).on('error', function(e) {
+                        errMsg = cardNo+':获取alipay接口信息出错了';
+                        cbf(errMsg);
+                    });
+                }else{
+                    cbf("该银行卡不存在");
+                }
             }
         });
     }
@@ -2078,5 +2125,20 @@
             cbf(err,bin);
         });
     }
-    root.getBankBin = getBankBin;
+    if (typeof exports !== 'undefined'){
+        if(typeof module !== 'undefined' && module.exports){
+            exports = module.exports = {getBankBin:getBankBin};
+        }
+        exports.getBankBin = getBankBin;
+    }else if(typeof define === 'function' && define.amd){
+        define('bankInfo', [], function(){
+            return {getBankBin:getBankBin};
+        });
+    }else if(typeof define === 'function' && define.cmd){
+        define(function(){
+            return {getBankBin:getBankBin};
+        })
+    }else{
+        root.getBankBin = getBankBin;
+    }
 }.call(this));
