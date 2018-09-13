@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>银行卡自动识别</title>
+    <script type="text/javascript" src="jquery.min.js"></script>
+    <script type="text/javascript" src="bankCard.js"></script>
+</head>
+<body>
+<input type="text" id="card">
+<button id="btn">识别</button>
+
+<script>
+    $('#btn').click(function(){
+        var value = $('#card').val();
+        if(value!=''){
+            getBankBin(value, function (err, data) {
+                console.log(err,data)
+            });
+        }
+    })
+</script>
+</body>
+</html>
